@@ -58,7 +58,10 @@ func parsePacValue(value string) []string {
 	return result
 }
 
-func FindProxy(pacPath string, url string) (map[string]*neturl.URL, error) {
+// Выполняет поиск прокси для переданного url.
+// pacFile - путь pac файлу (он может располагаться локально или на удаленном сервере)
+// url - url для которого выполняется поиск proxy
+func FindProxy(pacFile, url string) (map[string]*neturl.URL, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			err = errors.New("unexpected error when retrieving a proxy")
@@ -66,9 +69,17 @@ func FindProxy(pacPath string, url string) (map[string]*neturl.URL, error) {
 	}()
 
 	pacParser := new(gopac.Parser)
-	if err := pacParser.ParseUrl(pacPath); err != nil {
-		err = errors.New("error getting access to the PAC file")
-		return map[string]*neturl.URL{}, err
+
+	if strings.HasPrefix(pacFile, "http") {
+		if err := pacParser.ParseUrl(pacFile); err != nil {
+			err = errors.New("error parsing a pac file: " + err.Error())
+			return map[string]*neturl.URL{}, err
+		}
+	} else {
+		if err := pacParser.Parse(pacFile); err != nil {
+			err = errors.New("error parsing a pac file: " + err.Error())
+			return map[string]*neturl.URL{}, err
+		}
 	}
 
 	pacData, err := pacParser.FindProxy(url, getHostname(url))
