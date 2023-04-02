@@ -1,4 +1,4 @@
-module bitbucket.org/alex925/gopacparser
+module github.com/aleksey925/gopacparser
 
 go 1.14
 
