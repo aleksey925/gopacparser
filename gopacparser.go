@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+const (
+	DIRECT = "DIRECT"
+	PROXY  = "PROXY"
+	SOCKS  = "SOCKS"
+)
+
 func getHostname(value string) string {
 	result, err := neturl.Parse(value)
 	hostname := ""
@@ -20,21 +26,21 @@ func getHostname(value string) string {
 // Приводит в удобный вид значения, которые возвращает gopac
 // value - значение для парсинга: "DIRECT", "PROXY example.local:8080", "SOCKS example.local:8080"
 func proxyUrl(value string) (string, error) {
-	if strings.ToUpper(value) == "DIRECT" {
-		return "DIRECT", nil
+	if strings.ToUpper(value) == DIRECT {
+		return DIRECT, nil
 	}
 	parts := strings.Split(value, " ")
 
 	if len(parts) == 2 {
 		keyword, proxy := strings.ToUpper(parts[0]), parts[1]
-		if keyword == "PROXY" {
+		if keyword == PROXY {
 			return "http://" + proxy, nil
 		}
-		if keyword == "SOCKS" {
+		if keyword == SOCKS {
 			return "socks5://" + proxy, nil
 		}
 	}
-	return "", errors.New(fmt.Sprintf("unrecognized proxy config value '%s'", value))
+	return "", fmt.Errorf("unrecognized proxy config value '%s'", value)
 }
 
 // Парсит строку возвращенную gopac
@@ -72,19 +78,19 @@ func FindProxy(pacFile, url string) (map[string]*neturl.URL, error) {
 
 	if strings.HasPrefix(pacFile, "http") {
 		if err := pacParser.ParseUrl(pacFile); err != nil {
-			err = errors.New("error parsing a pac file: " + err.Error())
+			err = fmt.Errorf("error parsing a pac file: %s", err.Error())
 			return map[string]*neturl.URL{}, err
 		}
 	} else {
 		if err := pacParser.Parse(pacFile); err != nil {
-			err = errors.New("error parsing a pac file: " + err.Error())
+			err = fmt.Errorf("error parsing a pac file: %s", err.Error())
 			return map[string]*neturl.URL{}, err
 		}
 	}
 
 	pacData, err := pacParser.FindProxy(url, getHostname(url))
 	if err != nil {
-		err = errors.New("failed to find a proxy for: " + url)
+		err = fmt.Errorf("failed to find a proxy for: %s", url)
 		return map[string]*neturl.URL{}, err
 	}
 
@@ -94,10 +100,10 @@ func FindProxy(pacFile, url string) (map[string]*neturl.URL, error) {
 		proxy = proxies[0]
 	}
 	if proxy == "" {
-		return map[string]*neturl.URL{}, errors.New("no proxy configured or available for: " + url)
+		return map[string]*neturl.URL{}, fmt.Errorf("no proxy configured or available for: %s", url)
 	}
 
-	if proxy == "DIRECT" {
+	if proxy == DIRECT {
 		return map[string]*neturl.URL{}, nil
 	} else {
 		parsedUrl, err := neturl.Parse(proxy)
